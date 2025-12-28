@@ -1,8 +1,8 @@
-# 📦 Archivos Descargados del Odoo MCP Server
+# 📦 Odoo MCP Server v1.2.0
 
-## ✅ Descarga Completada
+## ✅ Versión Actual: 1.2.0 - Análisis Territorial Exhaustivo
 
-Se han extraído todos los archivos del contenedor Docker `odoo-mcp-server` actualmente en ejecución.
+Servidor MCP con capacidades avanzadas de análisis territorial que incluye segmentación RFM, análisis temporal (MoM), métricas de concentración y detección de oportunidades de expansión.
 
 ## 📁 Archivos Incluidos
 
@@ -149,8 +149,7 @@ docker-compose logs -f odoo-mcp
 
 ### Probar con Claude
 
-Prueba estos prompts:
-
+#### Prompts Básicos:
 ```
 "Muéstrame las ventas de los últimos 30 días"
 
@@ -159,10 +158,27 @@ Prueba estos prompts:
 "¿Cuáles son los productos más vendidos?"
 
 "Analiza el rendimiento del equipo de ventas"
+```
 
-"Dame un análisis territorial por provincia y ciudad"
+#### Prompts de Análisis Territorial (v1.2.0):
+```
+"Dame un análisis territorial exhaustivo de los últimos 30 días"
 
-"¿Qué productos se venden más en cada territorio?"
+"¿Qué provincias están creciendo más rápido?"
+
+"Muéstrame qué ciudades tienen potencial de expansión"
+
+"¿Cuáles provincias tienen más clientes VIP?"
+
+"Identifica territorios con alta concentración de ventas"
+
+"¿Dónde están los clientes en riesgo por provincia?"
+
+"Compara el crecimiento territorial del mes actual vs anterior"
+
+"¿Qué productos se venden más en cada provincia?"
+
+"Muéstrame oportunidades de expansión territorial"
 ```
 
 ## 🔄 Comandos Útiles
