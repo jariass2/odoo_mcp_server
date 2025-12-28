@@ -159,6 +159,10 @@ Prueba estos prompts:
 "¿Cuáles son los productos más vendidos?"
 
 "Analiza el rendimiento del equipo de ventas"
+
+"Dame un análisis territorial por provincia y ciudad"
+
+"¿Qué productos se venden más en cada territorio?"
 ```
 
 ## 🔄 Comandos Útiles

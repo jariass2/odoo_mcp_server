@@ -14,7 +14,8 @@ Este servidor expone herramientas de análisis de ventas, clientes y CRM de Odoo
 4. **📦 Product Performance** - Rendimiento y ranking de productos
 5. **👨‍💼 Sales Team Performance** - Métricas del equipo comercial
 6. **🔍 Customer Search** - Búsqueda rápida de clientes
-7. **📈 Comprehensive Data** - Análisis completo en una sola llamada
+7. **🗺️ Territorial Analysis** - Análisis territorial por provincia/ciudad (ventas, clientes, productos por zona)
+8. **📈 Comprehensive Data** - Análisis completo en una sola llamada
 
 ### Segmentación de Clientes (RFM)
 
@@ -24,6 +25,31 @@ El servidor implementa análisis RFM automático:
 - **New**: Primera compra en los últimos 30 días
 - **Inactive**: Sin compras en más de 365 días
 - **Regular**: Resto de clientes activos
+
+### Análisis Territorial
+
+Nueva funcionalidad que agrega datos de ventas, clientes y productos por ubicación geográfica:
+
+**Métricas por Provincia:**
+- Total de ventas y número de pedidos
+- Número de clientes activos
+- Ticket promedio por zona
+- Top 5 ciudades con más ventas
+
+**Análisis por Ciudad:**
+- Ingresos por ciudad dentro de cada provincia
+- Número de clientes y pedidos
+- Identificación de zonas de alto rendimiento
+
+**Productos por Territorio:**
+- Top 5 productos más vendidos en cada provincia
+- Cantidad y facturación por producto y zona
+- Identificación de preferencias regionales
+
+**Cobertura de Vendedores:**
+- Vendedores activos por provincia
+- Facturación y número de deals por vendedor y zona
+- Análisis de cobertura territorial
 
 ## 🚀 Instalación y Configuración
 
@@ -112,6 +138,12 @@ Agregar el servidor MCP a tu configuración de Claude Code (`.claude/settings.js
 "Busca clientes que contengan 'García' en su nombre"
 
 "Analiza el pipeline de oportunidades con probabilidad mayor al 50%"
+
+"Dame un análisis territorial de ventas por provincia"
+
+"¿Cuáles son las ciudades con más ventas en los últimos 60 días?"
+
+"Muéstrame qué productos se venden más en cada provincia"
 ```
 
 ## 🔧 Comandos Útiles
@@ -163,6 +195,7 @@ docker exec odoo-mcp-server env | grep ODOO
 | `/get_product_performance` | POST | Ranking de productos |
 | `/get_sales_team_performance` | POST | Métricas del equipo |
 | `/search_customers` | POST | Búsqueda de clientes |
+| `/get_territorial_analysis` | POST | Análisis por provincia/ciudad |
 | `/get_comprehensive_data` | POST | Análisis completo |
 
 ## 🔒 Seguridad
@@ -259,7 +292,16 @@ curl http://localhost:8000/ | jq '.version'
 
 ## 📝 Changelog
 
-### v1.0.1 (Actual)
+### v1.1.0 (Actual)
+- 🗺️ **NUEVO**: Análisis territorial por provincia/ciudad
+  - Agregación de ventas, clientes y productos por zona geográfica
+  - Top ciudades por provincia con métricas de rendimiento
+  - Análisis de productos más vendidos por territorio
+  - Cobertura de vendedores por zona
+- ✅ Datos geográficos completos en customer insights y búsqueda
+- ✅ Documentación mejorada de configuración `.env`
+
+### v1.0.1
 - ✅ Fix: Manejo correcto de `product_id` nulos en rendimiento de productos
 - ✅ Implementación de segmentación RFM avanzada
 - ✅ Health check mejorado con estado de conexión Odoo
