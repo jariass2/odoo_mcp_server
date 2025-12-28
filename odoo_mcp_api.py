@@ -172,7 +172,7 @@ async def list_tools():
             },
             {
                 "name": "get_territorial_analysis",
-                "description": "Análisis territorial exhaustivo: clientes, ventas, productos y vendedores agregados por provincia/ciudad. Incluye top ciudades, productos por territorio, y cobertura de vendedores.",
+                "description": "Análisis territorial EXHAUSTIVO v1.2.0: clientes, ventas, productos y vendedores por provincia/ciudad. NUEVAS FUNCIONALIDADES: segmentación RFM territorial, análisis MoM (comparación con período anterior), métricas de concentración, y oportunidades de expansión.",
                 "parameters": ["days_back"]
             },
             {

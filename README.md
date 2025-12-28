@@ -26,27 +26,48 @@ El servidor implementa análisis RFM automático:
 - **Inactive**: Sin compras en más de 365 días
 - **Regular**: Resto de clientes activos
 
-### Análisis Territorial
+### Análisis Territorial Exhaustivo (v1.2.0)
 
-Nueva funcionalidad que agrega datos de ventas, clientes y productos por ubicación geográfica:
+Análisis territorial avanzado con múltiples dimensiones de inteligencia de negocio:
 
-**Métricas por Provincia:**
+**📊 Métricas por Provincia:**
 - Total de ventas y número de pedidos
-- Número de clientes activos
+- Número de clientes activos y ciudades cubiertas
 - Ticket promedio por zona
 - Top 5 ciudades con más ventas
 
-**Análisis por Ciudad:**
+**👥 Segmentación RFM por Territorio:**
+- Distribución de clientes VIP, At Risk, New, Regular e Inactive
+- Análisis de calidad de cartera por provincia
+- Identificación de territorios con alto valor de cliente
+
+**📈 Análisis Temporal (MoM):**
+- Comparación con período anterior equivalente
+- Tasa de crecimiento por provincia
+- Identificación de tendencias territoriales
+- Top provincias en crecimiento
+
+**📍 Métricas de Concentración:**
+- Porcentaje de concentración en top 3 ciudades
+- Índice de diversificación territorial
+- Identificación de mercados concentrados vs distribuidos
+
+**💡 Oportunidades de Expansión:**
+- Ciudades con 1-2 clientes (potencial de crecimiento)
+- Territorios subatendidos (<5 clientes)
+- Análisis de cobertura y penetración de mercado
+
+**🎯 Análisis por Ciudad:**
 - Ingresos por ciudad dentro de cada provincia
-- Número de clientes y pedidos
+- Número de clientes y pedidos por ciudad
 - Identificación de zonas de alto rendimiento
 
-**Productos por Territorio:**
+**📦 Productos por Territorio:**
 - Top 5 productos más vendidos en cada provincia
 - Cantidad y facturación por producto y zona
 - Identificación de preferencias regionales
 
-**Cobertura de Vendedores:**
+**👨‍💼 Cobertura de Vendedores:**
 - Vendedores activos por provincia
 - Facturación y número de deals por vendedor y zona
 - Análisis de cobertura territorial
@@ -126,24 +147,50 @@ Agregar el servidor MCP a tu configuración de Claude Code (`.claude/settings.js
 
 ### Ejemplos de Prompts para Claude
 
+**Análisis de Ventas:**
 ```
 "Muéstrame las ventas de los últimos 30 días"
-
-"¿Qué clientes están en riesgo de perderse?"
 
 "Dame un análisis completo de rendimiento del equipo de ventas"
 
 "¿Cuáles son los 10 productos más vendidos este trimestre?"
+```
+
+**Gestión de Clientes:**
+```
+"¿Qué clientes están en riesgo de perderse?"
+
+"Muéstrame los clientes VIP por provincia"
 
 "Busca clientes que contengan 'García' en su nombre"
+```
 
+**Pipeline y Oportunidades:**
+```
 "Analiza el pipeline de oportunidades con probabilidad mayor al 50%"
 
-"Dame un análisis territorial de ventas por provincia"
+"¿Cuáles son las oportunidades más grandes del mes?"
+```
 
-"¿Cuáles son las ciudades con más ventas en los últimos 60 días?"
+**Análisis Territorial Avanzado (v1.2.0):**
+```
+"Dame un análisis territorial exhaustivo de los últimos 30 días"
 
-"Muéstrame qué productos se venden más en cada provincia"
+"¿Qué provincias están creciendo más rápido?"
+
+"Muéstrame qué ciudades tienen potencial de expansión"
+
+"¿Cuáles provincias tienen más clientes VIP?"
+
+"Identifica territorios con alta concentración de ventas"
+
+"¿Dónde están los clientes en riesgo por provincia?"
+
+"Compara el crecimiento territorial del mes actual vs anterior"
+
+"¿Qué productos se venden más en cada provincia?"
+
+"Muéstrame oportunidades de expansión territorial"
 ```
 
 ## 🔧 Comandos Útiles
@@ -292,7 +339,28 @@ curl http://localhost:8000/ | jq '.version'
 
 ## 📝 Changelog
 
-### v1.1.0 (Actual)
+### v1.2.0 (Actual) - Análisis Territorial Exhaustivo
+- 🚀 **NUEVO**: Segmentación RFM por territorio
+  - Distribución de clientes VIP, At Risk, New, Regular e Inactive por provincia
+  - Análisis de calidad de cartera territorial
+  - Métricas globales de segmentación agregadas
+- 📈 **NUEVO**: Análisis temporal period-over-period
+  - Comparación automática con período anterior (MoM)
+  - Tasa de crecimiento por provincia
+  - Top provincias en crecimiento
+  - Métricas globales de crecimiento
+- 📊 **NUEVO**: Métricas de concentración de mercado
+  - Porcentaje de concentración en top 3 ciudades
+  - Identificación de mercados concentrados (>80%)
+  - Total de ciudades por provincia
+- 💡 **NUEVO**: Análisis de oportunidades de expansión
+  - Ciudades con 1-2 clientes para potencial crecimiento
+  - Territorios subatendidos (<5 clientes)
+  - Identificación de zonas de alto potencial
+- ✅ Datos territoriales incluidos en `/get_comprehensive_data`
+- ✅ Backward compatible con v1.1.0
+
+### v1.1.0
 - 🗺️ **NUEVO**: Análisis territorial por provincia/ciudad
   - Agregación de ventas, clientes y productos por zona geográfica
   - Top ciudades por provincia con métricas de rendimiento
