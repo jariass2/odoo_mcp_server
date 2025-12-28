@@ -1,4 +1,4 @@
-# odoo_mcp_api.py - VERSIÓN CON ANÁLISIS TERRITORIAL v1.1.0
+# odoo_mcp_api.py - VERSIÓN CON ANÁLISIS TERRITORIAL EXHAUSTIVO v1.2.0
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Odoo MCP Server for Claude",
-    description="Marketing & Sales Manager AI - Odoo Data Access with Territorial Analysis",
-    version="1.1.0"
+    description="Marketing & Sales Manager AI - Odoo Data Access with Enhanced Territorial Analysis",
+    version="1.2.0"
 )
 
 app.add_middleware(
@@ -515,11 +515,18 @@ async def search_customers(request: CustomerSearchRequest):
 @app.post("/get_territorial_analysis")
 async def get_territorial_analysis(request: SalesDataRequest):
     """
-    Análisis territorial completo: clientes, ventas, productos y vendedores por provincia/ciudad.
-    Resuelve la limitación de datos geográficos identificada en el análisis.
+    Análisis territorial EXHAUSTIVO: clientes, ventas, productos y vendedores por provincia/ciudad.
+
+    NUEVAS FUNCIONALIDADES v1.2.0:
+    - Segmentación RFM por territorio
+    - Análisis temporal (comparación con período anterior)
+    - Métricas de concentración y distribución
+    - Análisis de oportunidades y potencial de crecimiento
     """
     try:
         date_from = (datetime.now() - timedelta(days=request.days_back)).strftime('%Y-%m-%d')
+        date_from_previous = (datetime.now() - timedelta(days=request.days_back * 2)).strftime('%Y-%m-%d')
+        date_to_previous = (datetime.now() - timedelta(days=request.days_back + 1)).strftime('%Y-%m-%d')
 
         # 1. Obtener todos los clientes con datos geográficos
         logger.info("📍 Fetching customers with geographic data...")
@@ -529,12 +536,28 @@ async def get_territorial_analysis(request: SalesDataRequest):
             'limit': 5000
         })
 
-        # 2. Obtener ventas del período con partner info
+        # 2. Obtener ventas del período ACTUAL con partner info
         logger.info(f"📊 Fetching sales from {date_from}...")
         sales = odoo.execute_kw('sale.order', 'search_read',
             [[['date_order', '>=', date_from], ['state', 'in', ['sale', 'done']]]], {
             'fields': ['partner_id', 'amount_total', 'user_id', 'date_order'],
             'limit': 10000
+        })
+
+        # 2b. Obtener ventas del período ANTERIOR para comparación temporal
+        logger.info(f"📊 Fetching previous period sales ({date_from_previous} to {date_to_previous})...")
+        sales_previous = odoo.execute_kw('sale.order', 'search_read',
+            [[['date_order', '>=', date_from_previous], ['date_order', '<=', date_to_previous], ['state', 'in', ['sale', 'done']]]], {
+            'fields': ['partner_id', 'amount_total'],
+            'limit': 10000
+        })
+
+        # 2c. Obtener TODAS las órdenes de clientes para segmentación RFM
+        logger.info("👥 Fetching all customer orders for RFM segmentation...")
+        all_customer_orders = odoo.execute_kw('sale.order', 'search_read',
+            [[['state', 'in', ['sale', 'done']]]], {
+            'fields': ['partner_id', 'amount_total', 'date_order'],
+            'limit': 20000
         })
 
         # 3. Obtener líneas de pedido para análisis de productos por territorio
@@ -640,7 +663,66 @@ async def get_territorial_analysis(request: SalesDataRequest):
             territorial_data[state]['products'][product_name]['qty'] += line.get('product_uom_qty', 0)
             territorial_data[state]['products'][product_name]['revenue'] += line.get('price_subtotal', 0)
 
-        # 7. Formatear resultados
+        # 7. Calcular segmentación RFM por cliente
+        logger.info("🎯 Calculating RFM segmentation...")
+        customer_rfm = {}
+        for order in all_customer_orders:
+            partner_id = order['partner_id'][0] if order.get('partner_id') else None
+            if not partner_id:
+                continue
+
+            if partner_id not in customer_rfm:
+                customer_rfm[partner_id] = {
+                    'total_revenue': 0,
+                    'num_purchases': 0,
+                    'last_order_date': None
+                }
+
+            customer_rfm[partner_id]['total_revenue'] += order.get('amount_total', 0)
+            customer_rfm[partner_id]['num_purchases'] += 1
+            order_date = order.get('date_order', '')
+            if order_date:
+                if not customer_rfm[partner_id]['last_order_date'] or order_date > customer_rfm[partner_id]['last_order_date']:
+                    customer_rfm[partner_id]['last_order_date'] = order_date
+
+        # Asignar segmento RFM a cada cliente
+        for partner_id, metrics in customer_rfm.items():
+            if metrics['last_order_date']:
+                days_since_last = (datetime.now() - datetime.strptime(metrics['last_order_date'][:10], '%Y-%m-%d')).days
+            else:
+                days_since_last = 999
+
+            total_revenue = metrics['total_revenue']
+            num_purchases = metrics['num_purchases']
+
+            # Segmentación RFM
+            if total_revenue > 10000 and num_purchases > 5:
+                segment = "vip"
+            elif days_since_last > 180 and num_purchases > 2:
+                segment = "at_risk"
+            elif num_purchases == 1 and days_since_last < 30:
+                segment = "new"
+            elif days_since_last > 365:
+                segment = "inactive"
+            else:
+                segment = "regular"
+
+            customer_rfm[partner_id]['segment'] = segment
+
+        # 8. Calcular métricas del período anterior por provincia
+        logger.info("📈 Calculating previous period metrics...")
+        previous_revenue_by_state = {}
+        for sale in sales_previous:
+            partner_id = sale['partner_id'][0] if sale.get('partner_id') else None
+            if not partner_id or partner_id not in customer_location:
+                continue
+
+            state = customer_location[partner_id]['state']
+            if state not in previous_revenue_by_state:
+                previous_revenue_by_state[state] = 0
+            previous_revenue_by_state[state] += sale.get('amount_total', 0)
+
+        # 9. Formatear resultados
         results = []
         for state, data in territorial_data.items():
             # Top 5 ciudades
@@ -665,6 +747,30 @@ async def get_territorial_analysis(request: SalesDataRequest):
                 reverse=True
             )
 
+            # Calcular segmentación RFM por territorio
+            rfm_segments = {'vip': 0, 'at_risk': 0, 'new': 0, 'inactive': 0, 'regular': 0}
+            for customer_id in data['customers']:
+                if customer_id in customer_rfm:
+                    segment = customer_rfm[customer_id].get('segment', 'regular')
+                    rfm_segments[segment] += 1
+
+            # Calcular crecimiento vs período anterior
+            current_revenue = data['total_revenue']
+            previous_revenue = previous_revenue_by_state.get(state, 0)
+            if previous_revenue > 0:
+                growth_rate = ((current_revenue - previous_revenue) / previous_revenue) * 100
+            else:
+                growth_rate = 100 if current_revenue > 0 else 0
+
+            # Métricas de concentración
+            total_cities_revenue = sum(c['revenue'] for c in cities_sorted)
+            top3_cities_revenue = sum(c['revenue'] for c in cities_sorted[:3])
+            concentration_index = (top3_cities_revenue / total_cities_revenue * 100) if total_cities_revenue > 0 else 0
+
+            # Análisis de oportunidades
+            cities_with_few_customers = [c for c in cities_sorted if c['num_customers'] <= 2 and c['num_customers'] > 0]
+            expansion_opportunities = len(cities_with_few_customers)
+
             results.append({
                 'state': state,
                 'total_revenue': round(data['total_revenue'], 2),
@@ -673,28 +779,86 @@ async def get_territorial_analysis(request: SalesDataRequest):
                 'avg_order_value': round(data['total_revenue'] / data['num_orders'], 2) if data['num_orders'] > 0 else 0,
                 'top_cities': cities_sorted[:5],
                 'top_products': products_sorted[:5],
-                'salespeople': salespeople_sorted
+                'salespeople': salespeople_sorted,
+                # NUEVAS MÉTRICAS
+                'rfm_segmentation': rfm_segments,
+                'growth_vs_previous_period': {
+                    'current_revenue': round(current_revenue, 2),
+                    'previous_revenue': round(previous_revenue, 2),
+                    'growth_rate': round(growth_rate, 2),
+                    'growth_amount': round(current_revenue - previous_revenue, 2)
+                },
+                'concentration_metrics': {
+                    'total_cities': len(cities_sorted),
+                    'top3_concentration_pct': round(concentration_index, 2)
+                },
+                'expansion_opportunities': {
+                    'cities_with_1_2_customers': expansion_opportunities,
+                    'potential_cities': cities_with_few_customers[:5]
+                }
             })
 
         # Ordenar por revenue
         results.sort(key=lambda x: x['total_revenue'], reverse=True)
 
         total_revenue = sum(r['total_revenue'] for r in results)
+        total_previous_revenue = sum(previous_revenue_by_state.values())
+
+        # Agregar métricas globales de RFM
+        global_rfm = {'vip': 0, 'at_risk': 0, 'new': 0, 'inactive': 0, 'regular': 0}
+        for r in results:
+            for segment, count in r['rfm_segmentation'].items():
+                global_rfm[segment] += count
+
+        # Calcular total de ciudades y oportunidades de expansión
+        total_cities = sum(r['concentration_metrics']['total_cities'] for r in results)
+        total_expansion_opportunities = sum(r['expansion_opportunities']['cities_with_1_2_customers'] for r in results)
+
+        # Crecimiento global
+        global_growth_rate = 0
+        if total_previous_revenue > 0:
+            global_growth_rate = ((total_revenue - total_previous_revenue) / total_previous_revenue) * 100
+
+        # Top territorios de crecimiento
+        growing_states = [r for r in results if r['growth_vs_previous_period']['growth_rate'] > 0]
+        growing_states_sorted = sorted(growing_states, key=lambda x: x['growth_vs_previous_period']['growth_rate'], reverse=True)
 
         return {
             "success": True,
             "count": len(results),
             "data": results,
             "summary": {
+                # Métricas básicas
                 "total_revenue": round(total_revenue, 2),
                 "total_states": len(results),
                 "total_orders": sum(r['num_orders'] for r in results),
                 "total_customers": sum(r['num_customers'] for r in results),
+                "total_cities": total_cities,
                 "period_days": request.days_back,
                 "date_from": date_from,
                 "date_to": datetime.now().strftime('%Y-%m-%d'),
                 "top_state": results[0]['state'] if results else None,
-                "top_state_revenue": results[0]['total_revenue'] if results else 0
+                "top_state_revenue": results[0]['total_revenue'] if results else 0,
+                # NUEVAS MÉTRICAS AGREGADAS
+                "global_rfm_segmentation": global_rfm,
+                "global_growth": {
+                    "current_period_revenue": round(total_revenue, 2),
+                    "previous_period_revenue": round(total_previous_revenue, 2),
+                    "growth_rate_pct": round(global_growth_rate, 2),
+                    "growth_amount": round(total_revenue - total_previous_revenue, 2)
+                },
+                "top_growing_states": [
+                    {
+                        "state": s['state'],
+                        "growth_rate": s['growth_vs_previous_period']['growth_rate'],
+                        "revenue": s['total_revenue']
+                    } for s in growing_states_sorted[:5]
+                ],
+                "expansion_insights": {
+                    "total_expansion_opportunities": total_expansion_opportunities,
+                    "states_with_high_concentration": len([r for r in results if r['concentration_metrics']['top3_concentration_pct'] > 80]),
+                    "underserved_territories": len([r for r in results if r['num_customers'] < 5])
+                }
             }
         }
     except Exception as e:
