@@ -722,6 +722,7 @@ async def get_comprehensive_data(request: SalesDataRequest):
         opp_data = await get_crm_opportunities(opp_req)
         product_data = await get_product_performance(product_req)
         team_data = await get_sales_team_performance(sales_req)
+        territorial_data = await get_territorial_analysis(sales_req)
 
         return {
             "success": True,
@@ -732,7 +733,8 @@ async def get_comprehensive_data(request: SalesDataRequest):
                 "customers": customer_data,
                 "opportunities": opp_data,
                 "products": product_data,
-                "team": team_data
+                "team": team_data,
+                "territorial": territorial_data
             },
             "executive_summary": {
                 "total_revenue": sales_data["summary"]["total_revenue"],
@@ -746,7 +748,10 @@ async def get_comprehensive_data(request: SalesDataRequest):
                 "top_product": product_data["data"][0]["product_name"] if product_data["data"] else "N/A",
                 "top_product_revenue": product_data["data"][0]["total_revenue"] if product_data["data"] else 0,
                 "team_size": team_data["count"],
-                "top_seller": team_data["data"][0]["user_name"] if team_data["data"] else "N/A"
+                "top_seller": team_data["data"][0]["user_name"] if team_data["data"] else "N/A",
+                "total_states": territorial_data["summary"]["total_states"],
+                "top_state": territorial_data["summary"]["top_state"],
+                "top_state_revenue": territorial_data["summary"]["top_state_revenue"]
             }
         }
     except Exception as e:
