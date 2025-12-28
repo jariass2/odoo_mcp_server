@@ -97,8 +97,8 @@ async def root():
     return {
         "service": "Odoo MCP Server for Claude",
         "status": "running",
-        "description": "Marketing & Sales Manager AI - Intelligent Odoo Data Access with Territorial Analysis",
-        "version": "1.1.0",
+        "description": "Marketing & Sales Manager AI - Odoo Data Access with Enhanced Territorial Analysis",
+        "version": "1.2.0",
         "endpoints": {
             "health": "GET /health - Check server health and Odoo connection",
             "tools": "GET /tools - List all available tools",
