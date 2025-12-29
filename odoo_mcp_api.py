@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Odoo MCP Server for Claude",
-    description="Marketing & Sales Manager AI - Odoo Data Access with Enhanced Territorial Analysis",
-    version="1.2.0"
+    description="Marketing & Sales Manager AI - Odoo Data Access with Enhanced Territorial and Category Analysis",
+    version="1.3.0"
 )
 
 app.add_middleware(
@@ -90,6 +90,11 @@ class CustomerSearchRequest(BaseModel):
     query: str
     limit: int = 10
 
+class CategoryAnalysisRequest(BaseModel):
+    category_id: Optional[int] = None  # None = todas las categorías
+    days_back: int = 90
+    top_customers: int = 10
+
 # ==================== ENDPOINTS ====================
 
 @app.get("/")
@@ -97,8 +102,8 @@ async def root():
     return {
         "service": "Odoo MCP Server for Claude",
         "status": "running",
-        "description": "Marketing & Sales Manager AI - Odoo Data Access with Enhanced Territorial Analysis",
-        "version": "1.2.0",
+        "description": "Marketing & Sales Manager AI - Odoo Data Access with Enhanced Territorial and Category Analysis",
+        "version": "1.3.0",
         "endpoints": {
             "health": "GET /health - Check server health and Odoo connection",
             "tools": "GET /tools - List all available tools",
@@ -109,6 +114,7 @@ async def root():
             "team": "POST /get_sales_team_performance - Sales team metrics",
             "search": "POST /search_customers - Search customers by name/email/phone with geographic data",
             "territorial": "POST /get_territorial_analysis - Territorial analysis by province/city",
+            "category": "POST /get_category_analysis - Analysis by customer category (Hotel, Restaurant, etc.)",
             "comprehensive": "POST /get_comprehensive_data - All data for complete analysis"
         }
     }
@@ -174,6 +180,11 @@ async def list_tools():
                 "name": "get_territorial_analysis",
                 "description": "Análisis territorial EXHAUSTIVO v1.2.0: clientes, ventas, productos y vendedores por provincia/ciudad. NUEVAS FUNCIONALIDADES: segmentación RFM territorial, análisis MoM (comparación con período anterior), métricas de concentración, y oportunidades de expansión.",
                 "parameters": ["days_back"]
+            },
+            {
+                "name": "get_category_analysis",
+                "description": "Análisis exhaustivo por categoría de cliente (CADENA HOTEL, CADENA RESTAURANTE, HELADERIA, etc.). Incluye: ventas por categoría, segmentación RFM, top clientes, distribución geográfica, y productos más vendidos por tipo de negocio.",
+                "parameters": ["category_id", "days_back", "top_customers"]
             },
             {
                 "name": "get_comprehensive_data",
@@ -863,6 +874,252 @@ async def get_territorial_analysis(request: SalesDataRequest):
         }
     except Exception as e:
         logger.error(f"Error in get_territorial_analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/get_category_analysis")
+async def get_category_analysis(request: CategoryAnalysisRequest):
+    """
+    Análisis exhaustivo por categoría de cliente (CADENA HOTEL, RESTAURANTE, HELADERIA, etc.)
+
+    Proporciona métricas completas por categoría:
+    - Ventas y rendimiento
+    - Segmentación RFM de clientes en cada categoría
+    - Top clientes por categoría
+    - Distribución geográfica
+    - Productos más vendidos por categoría
+    """
+    try:
+        date_from = (datetime.now() - timedelta(days=request.days_back)).strftime('%Y-%m-%d')
+
+        # 1. Obtener todas las categorías disponibles
+        logger.info("🏷️  Fetching customer categories...")
+        categories = odoo.execute_kw('res.partner.category', 'search_read', [[]], {
+            'fields': ['name', 'parent_id', 'color'],
+            'limit': 200
+        })
+
+        # Filtrar por categoría específica si se solicita
+        if request.category_id:
+            categories = [c for c in categories if c['id'] == request.category_id]
+            if not categories:
+                raise HTTPException(status_code=404, detail=f"Category ID {request.category_id} not found")
+
+        # 2. Para cada categoría, obtener análisis completo
+        category_analysis = []
+
+        for category in categories:
+            category_id = category['id']
+            category_name = category['name']
+
+            logger.info(f"📊 Analyzing category: {category_name}")
+
+            # Obtener clientes de esta categoría
+            partners = odoo.execute_kw('res.partner', 'search_read',
+                [[['category_id', 'in', [category_id]], ['customer_rank', '>', 0]]], {
+                'fields': ['id', 'name', 'city', 'state_id', 'country_id'],
+                'limit': 2000
+            })
+
+            if not partners:
+                # Si no hay clientes en esta categoría, skip
+                continue
+
+            partner_ids = [p['id'] for p in partners]
+
+            # Obtener ventas de estos clientes en el período
+            sales = odoo.execute_kw('sale.order', 'search_read',
+                [[['partner_id', 'in', partner_ids],
+                  ['date_order', '>=', date_from],
+                  ['state', 'in', ['sale', 'done']]]], {
+                'fields': ['partner_id', 'amount_total', 'date_order'],
+                'limit': 10000
+            })
+
+            # Obtener TODAS las ventas históricas para RFM
+            all_sales = odoo.execute_kw('sale.order', 'search_read',
+                [[['partner_id', 'in', partner_ids], ['state', 'in', ['sale', 'done']]]], {
+                'fields': ['partner_id', 'amount_total', 'date_order'],
+                'limit': 20000
+            })
+
+            # Calcular métricas por cliente
+            customer_metrics = {}
+            for sale in all_sales:
+                partner_id = sale['partner_id'][0] if sale.get('partner_id') else None
+                if not partner_id:
+                    continue
+
+                if partner_id not in customer_metrics:
+                    customer_metrics[partner_id] = {
+                        'total_revenue': 0,
+                        'num_purchases': 0,
+                        'last_order_date': None,
+                        'partner_name': sale['partner_id'][1]
+                    }
+
+                customer_metrics[partner_id]['total_revenue'] += sale.get('amount_total', 0)
+                customer_metrics[partner_id]['num_purchases'] += 1
+                order_date = sale.get('date_order', '')
+                if order_date:
+                    if not customer_metrics[partner_id]['last_order_date'] or order_date > customer_metrics[partner_id]['last_order_date']:
+                        customer_metrics[partner_id]['last_order_date'] = order_date
+
+            # Asignar segmento RFM a cada cliente
+            rfm_segments = {'vip': 0, 'at_risk': 0, 'new': 0, 'inactive': 0, 'regular': 0}
+            top_customers_list = []
+
+            for partner_id, metrics in customer_metrics.items():
+                if metrics['last_order_date']:
+                    days_since_last = (datetime.now() - datetime.strptime(metrics['last_order_date'][:10], '%Y-%m-%d')).days
+                else:
+                    days_since_last = 999
+
+                total_revenue = metrics['total_revenue']
+                num_purchases = metrics['num_purchases']
+
+                # Segmentación RFM
+                if total_revenue > 10000 and num_purchases > 5:
+                    segment = "vip"
+                elif days_since_last > 180 and num_purchases > 2:
+                    segment = "at_risk"
+                elif num_purchases == 1 and days_since_last < 30:
+                    segment = "new"
+                elif days_since_last > 365:
+                    segment = "inactive"
+                else:
+                    segment = "regular"
+
+                rfm_segments[segment] += 1
+
+                # Añadir a lista de top clientes
+                # Buscar datos geográficos del partner
+                partner_info = next((p for p in partners if p['id'] == partner_id), None)
+
+                top_customers_list.append({
+                    'partner_id': partner_id,
+                    'name': metrics['partner_name'],
+                    'total_revenue': round(total_revenue, 2),
+                    'num_purchases': num_purchases,
+                    'days_since_last': days_since_last,
+                    'segment': segment,
+                    'city': partner_info.get('city', 'N/A') if partner_info else 'N/A',
+                    'state': partner_info.get('state_id', [False, 'N/A'])[1] if partner_info and partner_info.get('state_id') else 'N/A'
+                })
+
+            # Ordenar top clientes por revenue
+            top_customers_list.sort(key=lambda x: x['total_revenue'], reverse=True)
+
+            # Calcular métricas de ventas del período
+            total_revenue_period = sum(s.get('amount_total', 0) for s in sales)
+            num_orders_period = len(sales)
+
+            # Distribución geográfica
+            geo_distribution = {}
+            for partner in partners:
+                state = partner.get('state_id', [False, 'Sin provincia'])[1] if partner.get('state_id') else 'Sin provincia'
+                if state not in geo_distribution:
+                    geo_distribution[state] = 0
+                geo_distribution[state] += 1
+
+            geo_sorted = sorted(
+                [{'state': state, 'num_customers': count} for state, count in geo_distribution.items()],
+                key=lambda x: x['num_customers'],
+                reverse=True
+            )
+
+            # Obtener productos más vendidos a esta categoría
+            order_ids = [s['id'] for s in sales]
+            if order_ids:
+                order_lines = odoo.execute_kw('sale.order.line', 'search_read',
+                    [[['order_id', 'in', order_ids]]], {
+                    'fields': ['product_id', 'product_uom_qty', 'price_subtotal'],
+                    'limit': 10000
+                })
+
+                product_stats = {}
+                for line in order_lines:
+                    if not line.get('product_id') or line['product_id'] is False:
+                        continue
+
+                    prod_id = line['product_id'][0]
+                    prod_name = line['product_id'][1]
+
+                    if prod_id not in product_stats:
+                        product_stats[prod_id] = {
+                            'product_name': prod_name,
+                            'total_qty': 0,
+                            'total_revenue': 0
+                        }
+
+                    product_stats[prod_id]['total_qty'] += line.get('product_uom_qty', 0)
+                    product_stats[prod_id]['total_revenue'] += line.get('price_subtotal', 0)
+
+                top_products = sorted(
+                    [{'product_name': stats['product_name'],
+                      'qty': stats['total_qty'],
+                      'revenue': round(stats['total_revenue'], 2)}
+                     for stats in product_stats.values()],
+                    key=lambda x: x['revenue'],
+                    reverse=True
+                )[:10]
+            else:
+                top_products = []
+
+            # Agregar análisis de esta categoría
+            category_analysis.append({
+                'category_id': category_id,
+                'category_name': category_name,
+                'category_color': category.get('color', 0),
+                'num_customers': len(partners),
+                'num_active_customers': len(customer_metrics),
+                'revenue_period': round(total_revenue_period, 2),
+                'num_orders_period': num_orders_period,
+                'avg_order_value': round(total_revenue_period / num_orders_period, 2) if num_orders_period > 0 else 0,
+                'rfm_segmentation': rfm_segments,
+                'top_customers': top_customers_list[:request.top_customers],
+                'geographic_distribution': geo_sorted[:10],
+                'top_products': top_products,
+                'metrics': {
+                    'total_lifetime_revenue': round(sum(m['total_revenue'] for m in customer_metrics.values()), 2),
+                    'avg_revenue_per_customer': round(sum(m['total_revenue'] for m in customer_metrics.values()) / len(customer_metrics), 2) if customer_metrics else 0,
+                    'avg_purchases_per_customer': round(sum(m['num_purchases'] for m in customer_metrics.values()) / len(customer_metrics), 2) if customer_metrics else 0
+                }
+            })
+
+        # Ordenar categorías por revenue del período
+        category_analysis.sort(key=lambda x: x['revenue_period'], reverse=True)
+
+        # Calcular totales globales
+        total_customers = sum(c['num_customers'] for c in category_analysis)
+        total_revenue = sum(c['revenue_period'] for c in category_analysis)
+        total_orders = sum(c['num_orders_period'] for c in category_analysis)
+
+        # RFM global
+        global_rfm = {'vip': 0, 'at_risk': 0, 'new': 0, 'inactive': 0, 'regular': 0}
+        for c in category_analysis:
+            for segment, count in c['rfm_segmentation'].items():
+                global_rfm[segment] += count
+
+        return {
+            "success": True,
+            "count": len(category_analysis),
+            "data": category_analysis,
+            "summary": {
+                "total_categories": len(category_analysis),
+                "total_customers": total_customers,
+                "total_revenue_period": round(total_revenue, 2),
+                "total_orders_period": total_orders,
+                "avg_order_value": round(total_revenue / total_orders, 2) if total_orders > 0 else 0,
+                "period_days": request.days_back,
+                "date_from": date_from,
+                "date_to": datetime.now().strftime('%Y-%m-%d'),
+                "top_category": category_analysis[0]['category_name'] if category_analysis else None,
+                "top_category_revenue": category_analysis[0]['revenue_period'] if category_analysis else 0,
+                "global_rfm_segmentation": global_rfm
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error in get_category_analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/get_comprehensive_data")

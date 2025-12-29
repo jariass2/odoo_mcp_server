@@ -11,7 +11,8 @@
    - [Sales Team Performance](#5-sales-team-performance)
    - [Customer Search](#6-customer-search)
    - [Territorial Analysis](#7-territorial-analysis)
-   - [Comprehensive Data](#8-comprehensive-data)
+   - [Category Analysis](#8-category-analysis)
+   - [Comprehensive Data](#9-comprehensive-data)
 4. [Casos de Uso por Rol](#casos-de-uso-por-rol)
 5. [Flujos de Análisis Recomendados](#flujos-de-análisis-recomendados)
 
@@ -21,7 +22,7 @@
 
 El **Odoo MCP Server** es un servidor que implementa el protocolo MCP (Model Context Protocol) para exponer datos de Odoo a Claude AI. Actúa como un puente inteligente entre tu instancia de Odoo y Claude, permitiendo análisis avanzados de datos empresariales mediante lenguaje natural.
 
-**Versión actual:** v1.2.0
+**Versión actual:** v1.3.0
 **Tecnología:** FastAPI + XML-RPC
 **Puerto:** 8000
 
@@ -38,7 +39,8 @@ El **Odoo MCP Server** es un servidor que implementa el protocolo MCP (Model Con
 | 5 | **Sales Team Performance** | Métricas del equipo comercial | `/get_sales_team_performance` |
 | 6 | **Customer Search** | Búsqueda rápida de clientes | `/search_customers` |
 | 7 | **Territorial Analysis** | Análisis territorial exhaustivo | `/get_territorial_analysis` |
-| 8 | **Comprehensive Data** | Análisis completo en una sola llamada | `/get_comprehensive_data` |
+| 8 | **Category Analysis** | Análisis por tipo de negocio (Hotel, Restaurante, etc.) | `/get_category_analysis` |
+| 9 | **Comprehensive Data** | Análisis completo en una sola llamada | `/get_comprehensive_data` |
 
 ---
 
@@ -854,7 +856,247 @@ Herramienta más avanzada del servidor (v1.2.0). Proporciona análisis territori
 
 ---
 
-### 8. Comprehensive Data
+### 8. Category Analysis
+
+**Endpoint:** `POST /get_category_analysis`
+
+#### Descripción
+Análisis exhaustivo por categoría de cliente (tipo de negocio). Permite segmentar y analizar el rendimiento comercial por sectores específicos como CADENA HOTEL, CADENA RESTAURANTE, HELADERIA, CATERING, etc. Proporciona una vista completa del comportamiento de cada vertical de negocio.
+
+#### Parámetros
+
+| Parámetro | Tipo | Requerido | Default | Descripción |
+|-----------|------|-----------|---------|-------------|
+| `category_id` | int | No | None | ID de categoría específica (None = todas las categorías) |
+| `days_back` | int | No | 90 | Días hacia atrás para análisis de ventas |
+| `top_customers` | int | No | 10 | Número de top clientes a retornar por categoría |
+
+#### Información que Captura
+
+**Por cada categoría:**
+
+1. **Identificación:**
+   - ID de categoría
+   - Nombre de categoría
+   - Color de categoría
+
+2. **Métricas básicas:**
+   - Número total de clientes en la categoría
+   - Número de clientes activos (con compras)
+   - Ingresos del período analizado
+   - Número de pedidos del período
+   - Valor promedio de pedido
+
+3. **Segmentación RFM por categoría:**
+   - Clientes VIP en la categoría
+   - Clientes en riesgo
+   - Clientes nuevos
+   - Clientes inactivos
+   - Clientes regulares
+
+4. **Top clientes de la categoría:**
+   - Partner ID y nombre
+   - Ingresos totales históricos
+   - Número de compras
+   - Días desde última compra
+   - Segmento RFM
+   - Ubicación (ciudad y provincia)
+
+5. **Distribución geográfica:**
+   - Top 10 provincias con más clientes de la categoría
+   - Número de clientes por provincia
+
+6. **Top 10 productos más vendidos:**
+   - Productos más populares en cada categoría
+   - Cantidad vendida
+   - Ingresos generados
+
+7. **Métricas adicionales:**
+   - Ingresos totales históricos de la categoría
+   - Promedio de ingresos por cliente
+   - Promedio de compras por cliente
+
+**Métricas globales agregadas:**
+- Total de categorías analizadas
+- Total de clientes
+- Ingresos totales del período
+- Total de pedidos
+- Categoría líder por ingresos
+- Segmentación RFM global
+
+#### Preguntas Tipo que Responde
+
+**Análisis por sector:**
+- "¿Cómo están rindiendo mis clientes de CADENA HOTEL?"
+- "¿Qué categoría de negocio genera más ingresos?"
+- "¿Cuántos clientes tengo en cada categoría?"
+
+**Segmentación por categoría:**
+- "¿Cuántos clientes VIP tengo en RESTAURANTE vs HELADERIA?"
+- "¿Qué categorías tienen más clientes en riesgo?"
+- "¿Dónde están los clientes nuevos por sector?"
+
+**Análisis de clientes:**
+- "¿Quiénes son los mejores clientes de CATERING?"
+- "¿Qué hoteles independientes facturan más?"
+- "¿Cuántas heladerías están inactivas?"
+
+**Análisis geográfico:**
+- "¿Dónde se concentran los restaurantes?"
+- "¿En qué provincias tengo más cadenas hoteleras?"
+- "Distribución geográfica por tipo de negocio"
+
+**Análisis de productos:**
+- "¿Qué productos compran más las cadenas hoteleras?"
+- "¿Hay diferencias de producto entre restaurantes y caterings?"
+- "¿Qué productos prefieren las heladerías?"
+
+**Estrategia comercial:**
+- "¿Qué categoría tiene mejor ticket promedio?"
+- "¿En qué sector debería enfocar mis esfuerzos comerciales?"
+- "¿Qué categorías tienen más potencial de crecimiento?"
+
+**Comparativas:**
+- "Comparar rendimiento entre HOTEL INDEPENDIENTE y CADENA HOTEL"
+- "¿Qué categoría es más leal (menos días desde última compra)?"
+- "Diferencias de comportamiento entre sectores"
+
+#### Casos de Uso
+
+1. **Estrategia comercial por sector:** Identificar categorías de alto valor para enfocar recursos
+2. **Desarrollo de productos:** Adaptar catálogo según necesidades de cada sector
+3. **Retención por vertical:** Campañas específicas para clientes en riesgo de cada categoría
+4. **Expansión sectorial:** Identificar categorías con potencial de crecimiento
+5. **Pricing estratégico:** Ajustar precios según comportamiento de cada vertical
+6. **Marketing segmentado:** Comunicación personalizada por tipo de negocio
+7. **Análisis competitivo:** Comparar performance entre segmentos similares
+8. **Asignación de vendedores:** Especializar equipos por tipo de cliente
+
+#### Categorías Disponibles en el Sistema
+
+- **CADENA HOTEL** - Cadenas hoteleras
+- **CADENA RESTAURANTE** - Cadenas de restaurantes
+- **CAMPING** - Campings y alojamientos al aire libre
+- **CATERING** - Empresas de catering y eventos
+- **COCTELERIA** - Bares y coctelería
+- **COLECTIVIDAD** - Colectividades y comedores
+- **DISTRIBUCIÓN** - Distribuidores mayoristas
+- **ECOMMERCE** - Comercio electrónico
+- **EXPORT** - Exportación
+- **GRAN CUENTA** - Grandes cuentas corporativas
+- **GRUPAJE** - Grupaje y logística
+- **HELADERIA** - Heladerías
+- **HOTEL INDEPENDIENTE** - Hoteles independientes
+- **INDEPENDIENTE** - Negocios independientes
+- **PASTISSERIE/CAFETERIA** - Pastelerías y cafeterías
+- **RESTAURANTE** - Restaurantes independientes
+- **SUPERMERCADO** - Supermercados
+- **TIENDA INDEPENDIENTE** - Tiendas independientes
+- **TIENDA/RESTAURANTE** - Negocios mixtos
+
+#### Ejemplo de Respuesta
+
+```json
+{
+  "success": true,
+  "count": 18,
+  "data": [
+    {
+      "category_id": 8,
+      "category_name": "CADENA RESTAURANTE",
+      "category_color": 2,
+      "num_customers": 45,
+      "num_active_customers": 38,
+      "revenue_period": 235680.50,
+      "num_orders_period": 156,
+      "avg_order_value": 1510.77,
+      "rfm_segmentation": {
+        "vip": 12,
+        "at_risk": 5,
+        "new": 2,
+        "inactive": 1,
+        "regular": 18
+      },
+      "top_customers": [
+        {
+          "partner_id": 12345,
+          "name": "Cadena Restaurante ABC",
+          "total_revenue": 145680.00,
+          "num_purchases": 45,
+          "days_since_last": 3,
+          "segment": "vip",
+          "city": "Barcelona",
+          "state": "Barcelona (ES)"
+        },
+        {
+          "partner_id": 12346,
+          "name": "Grupo Gastronómico XYZ",
+          "total_revenue": 98450.50,
+          "num_purchases": 32,
+          "days_since_last": 7,
+          "segment": "vip",
+          "city": "Madrid",
+          "state": "Madrid (ES)"
+        }
+      ],
+      "geographic_distribution": [
+        {
+          "state": "Barcelona (ES)",
+          "num_customers": 15
+        },
+        {
+          "state": "Madrid (ES)",
+          "num_customers": 12
+        },
+        {
+          "state": "València (Valencia) (ES)",
+          "num_customers": 8
+        }
+      ],
+      "top_products": [
+        {
+          "product_name": "Helado Premium 5L",
+          "qty": 450.0,
+          "revenue": 45000.00
+        },
+        {
+          "product_name": "Sorbete Limón 5L",
+          "qty": 320.0,
+          "revenue": 28800.00
+        }
+      ],
+      "metrics": {
+        "total_lifetime_revenue": 1245680.75,
+        "avg_revenue_per_customer": 32781.07,
+        "avg_purchases_per_customer": 28.5
+      }
+    }
+  ],
+  "summary": {
+    "total_categories": 18,
+    "total_customers": 456,
+    "total_revenue_period": 1456780.90,
+    "total_orders_period": 1234,
+    "avg_order_value": 1180.50,
+    "period_days": 90,
+    "date_from": "2025-10-01",
+    "date_to": "2025-12-29",
+    "top_category": "CADENA RESTAURANTE",
+    "top_category_revenue": 235680.50,
+    "global_rfm_segmentation": {
+      "vip": 89,
+      "at_risk": 45,
+      "new": 23,
+      "inactive": 12,
+      "regular": 287
+    }
+  }
+}
+```
+
+---
+
+### 9. Comprehensive Data
 
 **Endpoint:** `POST /get_comprehensive_data`
 
