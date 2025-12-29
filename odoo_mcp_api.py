@@ -1136,6 +1136,7 @@ async def get_comprehensive_data(request: SalesDataRequest):
         customer_req = CustomerInsightsRequest(segment="all")
         opp_req = OpportunitiesRequest()
         product_req = ProductPerformanceRequest(days_back=request.days_back)
+        category_req = CategoryAnalysisRequest(days_back=request.days_back, top_customers=5)
 
         # Obtener todos los datos
         sales_data = await get_sales_data(sales_req)
@@ -1144,6 +1145,7 @@ async def get_comprehensive_data(request: SalesDataRequest):
         product_data = await get_product_performance(product_req)
         team_data = await get_sales_team_performance(sales_req)
         territorial_data = await get_territorial_analysis(sales_req)
+        category_data = await get_category_analysis(category_req)
 
         return {
             "success": True,
@@ -1155,7 +1157,8 @@ async def get_comprehensive_data(request: SalesDataRequest):
                 "opportunities": opp_data,
                 "products": product_data,
                 "team": team_data,
-                "territorial": territorial_data
+                "territorial": territorial_data,
+                "categories": category_data
             },
             "executive_summary": {
                 "total_revenue": sales_data["summary"]["total_revenue"],
@@ -1172,7 +1175,10 @@ async def get_comprehensive_data(request: SalesDataRequest):
                 "top_seller": team_data["data"][0]["user_name"] if team_data["data"] else "N/A",
                 "total_states": territorial_data["summary"]["total_states"],
                 "top_state": territorial_data["summary"]["top_state"],
-                "top_state_revenue": territorial_data["summary"]["top_state_revenue"]
+                "top_state_revenue": territorial_data["summary"]["top_state_revenue"],
+                "total_categories": category_data["summary"]["total_categories"],
+                "top_category": category_data["summary"]["top_category"],
+                "top_category_revenue": category_data["summary"]["top_category_revenue"]
             }
         }
     except Exception as e:

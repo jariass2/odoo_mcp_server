@@ -1118,10 +1118,11 @@ Ejecuta internamente:
 4. `get_product_performance`
 5. `get_sales_team_performance`
 6. `get_territorial_analysis`
+7. `get_category_analysis`
 
 Y devuelve:
 - Todos los datos de cada herramienta
-- Un resumen ejecutivo consolidado con KPIs clave
+- Un resumen ejecutivo consolidado con KPIs clave (incluye categoría líder)
 
 #### Preguntas Tipo que Responde
 
@@ -1159,7 +1160,8 @@ Y devuelve:
     "opportunities": { /* Todos los datos de crm_opportunities */ },
     "products": { /* Todos los datos de product_performance */ },
     "team": { /* Todos los datos de sales_team_performance */ },
-    "territorial": { /* Todos los datos de territorial_analysis */ }
+    "territorial": { /* Todos los datos de territorial_analysis */ },
+    "categories": { /* Todos los datos de category_analysis */ }
   },
   "executive_summary": {
     "total_revenue": 1245680.75,
@@ -1176,7 +1178,10 @@ Y devuelve:
     "top_seller": "Carlos Rodríguez",
     "total_states": 15,
     "top_state": "Madrid",
-    "top_state_revenue": 345680.50
+    "top_state_revenue": 345680.50,
+    "total_categories": 18,
+    "top_category": "CADENA RESTAURANTE",
+    "top_category_revenue": 235680.50
   }
 }
 ```
